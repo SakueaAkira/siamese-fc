@@ -13,6 +13,7 @@ function [newTargetPosition, bestScale] = tracker_eval(net_x, s_x, scoreId, z_fe
     responseMapsUP = gpuArray(single(zeros(p.scoreSize*p.responseUp, p.scoreSize*p.responseUp, p.numScale)));
     % 选择峰值最高的响应图
     if p.numScale>1
+		% currentScaleID 假设 scaleNum=5 , [-2 -1 0 1 2] 无缩放时对应的 0 序号为 3 ，即 ceil（5/2）。
         currentScaleID = ceil(p.numScale/2);
         bestScale = currentScaleID;
         bestPeak = -Inf;
@@ -27,35 +28,40 @@ function [newTargetPosition, bestScale] = tracker_eval(net_x, s_x, scoreId, z_fe
                 responseMapsUP(:,:,s) = responseMaps(:,:,s);
             end
             thisResponse = responseMapsUP(:,:,s);
-            % penalize change of scale
+            % 如果不是无缩放的状态，就乘以一个降权系数。
             if s~=currentScaleID, thisResponse = thisResponse * p.scalePenalty; end
             thisPeak = max(thisResponse(:));
             if thisPeak > bestPeak, bestPeak = thisPeak; bestScale = s; end
         end
+		% 最终的响应图选择响应最大的那副图。
         responseMap = responseMapsUP(:,:,bestScale);
     else
         responseMap = responseMapsUP;
         bestScale = 1;
     end
-    % make the response map sum to 1
+    % 响应图归一化，使其和为 1.
     responseMap = responseMap - min(responseMap(:));
     responseMap = responseMap / sum(responseMap(:));
-    % apply windowing
+    % 应用位移降权窗。降权窗和响应图按比例 wInfluence 混合。wInfluence 为 1 时响应图就是降权窗，新位置停留在上一帧。 
     responseMap = (1-p.wInfluence)*responseMap + p.wInfluence*window;
+	% 找到最大值坐标。
     [r_max, c_max] = find(responseMap == max(responseMap(:)), 1);
     [r_max, c_max] = avoid_empty_position(r_max, c_max, p);
     p_corr = [r_max, c_max];
-    % Convert to crop-relative coordinates to frame coordinates
-    % displacement from the center in instance final representation ...
+    % 将上采样网系转到原系。上采样网系大小为 272*272
+    % 上采样网系中的位移向量
     disp_instanceFinal = p_corr - ceil(p.scoreSize*p.responseUp/2);
-    % ... in instance input ...
+	% 将 272*272 映射回 instance 中，instance中新的目标位置只可能存在于与 255*255 同心的 127*127 正方形中。
+	% 因此实际上是将 272*272 -> 127*127 而不是 272*272 -> 255*255
+	% 现在 totalStride=8 ，这个公式有助于理解： (255-127)/8+1=17
     disp_instanceInput = disp_instanceFinal * p.totalStride / p.responseUp;
-    % ... in instance original crop (in frame coordinates)
+    % 最后将其映射回原系。似乎没有考虑缩放。
     disp_instanceFrame = disp_instanceInput * s_x / p.instanceSize;
-    % position within frame in frame coordinates
+    % 通过位移向量计算新位置。
     newTargetPosition = targetPosition + disp_instanceFrame;
 end
 
+% 这个函数似乎并未考虑上采样。
 function [r_max, c_max] = avoid_empty_position(r_max, c_max, params)
     if isempty(r_max)
         r_max = ceil(params.scoreSize/2);

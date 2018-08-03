@@ -13,11 +13,11 @@ function bboxes = tracker(varargin)
     % SiamFC-3S 的超参
     p.numScale = 3;					% 缩放级数（在用 z 搜索 x 时 x 的变化分几级）
     p.scaleStep = 1.0375;			% 缩放步长（缩放 x 时按照这个参数的 n 次方缩放）
-    p.scalePenalty = 0.9745;
+    p.scalePenalty = 0.9745;		% 缩放降权系数，非同尺寸图像中搜索的结果需要降权，即不认为被追踪的目标再帧间有较大的尺寸变化。
     p.scaleLR = 0.59; 				% damping factor for scale update
     p.responseUp = 16; 				% 上采样倍数。将全卷积网络的 17*17 激活图进行上采样（插值放大），提高定位精度。
     p.windowing = 'cosine'; 		% 使用汉宁窗防止位移过大
-    p.wInfluence = 0.176; 			% windowing influence (in convex sum) 0.176
+    p.wInfluence = 0.176; 			% 汉宁窗的影响系数
     p.net = '2016-08-17.net.mat'; 
     
     % 5S的超参 
@@ -138,7 +138,7 @@ function bboxes = tracker(varargin)
 
     switch p.windowing
         case 'cosine'
-			% 生成对于 (17*16)^2 Score 图的余弦窗（Hanning 窗）
+			% 生成对于上采样后（放大 responseUp 倍） Score 图的余弦窗（Hanning 窗）
             window = single(hann(p.scoreSize*p.responseUp) * hann(p.scoreSize*p.responseUp)');
         case 'uniform'
 			% 不生成窗函数。
@@ -175,11 +175,11 @@ function bboxes = tracker(varargin)
             % 在先前的目标位置裁剪一个正方形搜索区域，按照缩放比例形成缩放金字塔。
             x_crops = make_scale_pyramid(im, targetPosition, scaledInstance, p.instanceSize, avgChans, stats, p);
             % evaluate the offline-trained network for exemplar x features
-            [newTargetPosition, newScale] = tracker_eval(net_x, round(s_x), scoreId, z_features, x_crops, targetPosition, window, p);
+            [newTargetPosition, newScaleId] = tracker_eval(net_x, round(s_x), scoreId, z_features, x_crops, targetPosition, window, p);
             targetPosition = gather(newTargetPosition);
             % scale damping and saturation
-            s_x = max(min_s_x, min(max_s_x, (1-p.scaleLR)*s_x + p.scaleLR*scaledInstance(newScale)));
-            targetSize = (1-p.scaleLR)*targetSize + p.scaleLR*[scaledTarget(1,newScale) scaledTarget(2,newScale)];
+            s_x = max(min_s_x, min(max_s_x, (1-p.scaleLR)*s_x + p.scaleLR*scaledInstance(newScaleId)));
+            targetSize = (1-p.scaleLR)*targetSize + p.scaleLR*[scaledTarget(1,newScaleId) scaledTarget(2,newScaleId)];
         else
             % 第一帧不 track ，直接用 Ground Truth 做第一帧结果。
         end

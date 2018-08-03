@@ -4,7 +4,7 @@ function runAll_vot15
     gpus = 1;
 
     seq={
-%     'vot15_bag'
+    'vot15_bag'
 %     'vot15_ball1'
 %     'vot15_ball2'
 %     'vot15_basketball'
@@ -37,7 +37,7 @@ function runAll_vot15
 %     'vot15_handball1'
 %     'vot15_handball2'
 %     'vot15_helicopter'
-    'vot15_iceskater1'
+    % 'vot15_iceskater1'
 %     'vot15_iceskater2'
 %     'vot15_leaves'
 %     'vot15_marching'
