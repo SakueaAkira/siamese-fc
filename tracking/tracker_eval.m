@@ -7,17 +7,21 @@ function [newTargetPosition, bestScale] = tracker_eval(net_x, s_x, scoreId, z_fe
 %   Luca Bertinetto, Jack Valmadre, Joao F. Henriques, 2016
 % -------------------------------------------------------------------------------------------------------------------------
     % forward pass, using the pyramid of scaled crops as a "batch"
+	% 输入 z 的 feature 和 x 的各缩放裁剪结果进行激活。
     net_x.eval({p.id_feat_z, z_features, 'instance', x_crops});
     responseMaps = reshape(net_x.vars(scoreId).value, [p.scoreSize p.scoreSize p.numScale]);
     responseMapsUP = gpuArray(single(zeros(p.scoreSize*p.responseUp, p.scoreSize*p.responseUp, p.numScale)));
-    % Choose the scale whose response map has the highest peak
+    % 选择峰值最高的响应图
     if p.numScale>1
         currentScaleID = ceil(p.numScale/2);
         bestScale = currentScaleID;
         bestPeak = -Inf;
+		
+		
         for s=1:p.numScale
+			% 上采样提升精度
             if p.responseUp > 1
-                % upsample to improve accuracy
+				% 将图像扩大 responseUp 倍。
                 responseMapsUP(:,:,s) = imresize(responseMaps(:,:,s), p.responseUp, 'bicubic');
             else
                 responseMapsUP(:,:,s) = responseMaps(:,:,s);

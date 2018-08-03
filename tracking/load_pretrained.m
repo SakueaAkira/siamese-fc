@@ -8,7 +8,8 @@ function net = load_pretrained(netPath, gpu)
     end
     trainResults = load(netPath);
     net = trainResults.net;
-    % remove legacy fields if present
+	
+    % 如果过去版本的field存在则移除他们。
     [~,xcorrId] = find_layers_from_type(net, 'XCorr');
     xcorrId = xcorrId{1};
     if isfield(net.layers(xcorrId).block, 'expect')
@@ -21,7 +22,7 @@ function net = load_pretrained(netPath, gpu)
         net.layers(xcorrId).block = rmfield(net.layers(xcorrId).block,'visualization_grid_sz');
     end
 
-    % load as DAGNN
+    % 作为 dagNN 实例加载网络。
     net = dagnn.DagNN.loadobj(net);
     % remove loss layer
     net = remove_layers_from_block(net, 'dagnn.Loss');
@@ -29,6 +30,8 @@ function net = load_pretrained(netPath, gpu)
     if ~isempty(gpu)
        gpuDevice(gpu)
     end
+	% 将网络数据移动到GPU中。
     net.move('gpu');
+	% 选择为测试模式而不是训练模式。
     net.mode = 'test'; % very important for batch norm, we now use the stats accumulated during training.
 end

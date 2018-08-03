@@ -18,20 +18,26 @@ function [imgs, pos, target_sz] = load_video_info(base_path, video)
 
 	%load ground truth from text file
 	ground_truth = csvread([base_path '/' video '/' 'groundtruth.txt']);
-	region = ground_truth(1, :);
-	[cx, cy, w, h] = get_axis_aligned_BB(region);
-    pos = [cy cx]; % centre of the bounding box
+	region = ground_truth(1, :);													%load ground truth of the first frame.
+																					%ground truth file locate the object by four points
+																					%which demonstrate a rectangle.
+																					%but not necessarily a rectangle that aligen to the axis.
+																					%maybe has been rotated.
+																					%so we should convert it to a axis-aligen rectangle box firstly.
+																					
+	[cx, cy, w, h] = get_axis_aligned_BB(region);									
+    pos = [cy cx]; 																	% centre of the bounding box
     target_sz = [h w];
 
 	%load all jpg files in the folder
-	img_files = dir([video_path '*.jpg']);
+	img_files = dir([video_path '*.jpg']);											%function dir returns a list which includes basic info of files.
 	assert(~isempty(img_files), 'No image files to load.')
 	img_files = sort({img_files.name});
 
-	%eliminate frame 0 if it exists, since frames should only start at 1
+																					%eliminate frame 0 if it exists, since frames should only start at 1
 	img_files(strcmp('00000000.jpg', img_files)) = [];
     img_files = strcat(video_path, img_files);
-    % read all frames at once
+																					% read all frames at once
     imgs = vl_imreadjpeg(img_files,'numThreads', 12);
 end
 
