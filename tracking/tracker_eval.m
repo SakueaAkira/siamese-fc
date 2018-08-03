@@ -21,7 +21,7 @@ function [newTargetPosition, bestScale] = tracker_eval(net_x, s_x, scoreId, z_fe
         for s=1:p.numScale
 			% 上采样提升精度
             if p.responseUp > 1
-				% 将图像扩大 responseUp 倍。
+				% 双三次插值，将图像扩大 responseUp 倍。
                 responseMapsUP(:,:,s) = imresize(responseMaps(:,:,s), p.responseUp, 'bicubic');
             else
                 responseMapsUP(:,:,s) = responseMaps(:,:,s);
