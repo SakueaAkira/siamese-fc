@@ -174,7 +174,7 @@ function bboxes = tracker(varargin)
             scaledTarget = [targetSize(1) .* scales; targetSize(2) .* scales];
             % 在先前的目标位置裁剪一个正方形搜索区域，按照缩放比例形成缩放金字塔。
             x_crops = make_scale_pyramid(im, targetPosition, scaledInstance, p.instanceSize, avgChans, stats, p);
-            % evaluate the offline-trained network for exemplar x features
+            % 通过卷积计算，得到新的中心位置和最佳匹配的金字塔缩放取样。
             [newTargetPosition, newScaleId] = tracker_eval(net_x, round(s_x), scoreId, z_features, x_crops, targetPosition, window, p);
             targetPosition = gather(newTargetPosition);
             % scale damping and saturation
